@@ -1,11 +1,11 @@
 // This file contains the core logic of the application, including functions for checking link accessibility, validating required files based on assignment type, calculating grades, and displaying results.
 
 const defaultRules = {
-  "Web Development": ["index.html", ".css", ".js"],
-  "Data Analysis": [".ipynb", ".csv"],
-  "Generative AI": [".py", ".txt"],
-  "Cybersecurity": [".txt", ".py"],
-  "Graphics/Design": [".png", ".psd"]
+  "Web Development": [".html", ".css", ".js", "README.md"],
+  "Data Analysis": [".ipynb", ".csv", "README.md"],
+  "Generative AI": [".py", ".txt", "README.md"],
+  "Cybersecurity": [".txt", ".py", "README.md"],
+  "Graphics/Design": [".png", ".psd", "README.md"]
 };
 
 const gradingWeights = {
@@ -13,6 +13,8 @@ const gradingWeights = {
   requiredFiles: 0.3,
   structure: 0.3
 };
+
+const mvcDirs = ['models', 'views', 'controllers', 'public', 'static', 'routes', 'assets', 'templates', 'src'];
 
 const form = document.getElementById('checker-form');
 const resultCard = document.getElementById('result-card');
@@ -25,6 +27,20 @@ function detectLinkType(url) {
   return 'unknown';
 }
 
+async function fetchAllRepoFiles(apiUrl, files = []) {
+  const res = await fetch(apiUrl);
+  if (res.status !== 200) return files;
+  const items = await res.json();
+  for (const item of items) {
+    if (item.type === "file") {
+      files.push(item.path || item.name);
+    } else if (item.type === "dir") {
+      await fetchAllRepoFiles(item.url, files);
+    }
+  }
+  return files;
+}
+
 async function checkAccessibility(url, type) {
   try {
     let fetchUrl = url;
@@ -34,34 +50,17 @@ async function checkAccessibility(url, type) {
       fetchUrl = `https://api.github.com/repos/${match[1]}/${match[2]}`;
       const res = await fetch(fetchUrl);
       if (res.status === 200) return { passed: true, message: "Repo is public and accessible." };
-      return { passed: false, message: "Repo not accessible or not public." };
+      if (res.status === 404) return { passed: false, message: "Repo not found (may be private or does not exist)." };
+      if (res.status === 403) return { passed: false, message: "API rate limit exceeded. Try again later." };
+      return { passed: false, message: `Repo not accessible. Status: ${res.status}` };
     } else if (type === 'github-pages' || type === 'google-drive') {
-      // HEAD with no-cors always returns opaque, so just assume accessible if no error
       await fetch(fetchUrl, { method: 'HEAD', mode: 'no-cors' });
       return { passed: true, message: "Link is accessible." };
     }
     return { passed: false, message: "Unknown link type." };
   } catch (e) {
-    return { passed: false, message: "Link not accessible." };
+    return { passed: false, message: "Network error or link not accessible." };
   }
-}
-
-// Add common MVC directories
-const mvcDirs = ['models', 'views', 'controllers', 'public', 'static', 'routes', 'assets', 'templates', 'src'];
-
-// Recursively fetch all file paths in a GitHub repo using the GitHub API
-async function fetchAllRepoFiles(apiUrl, files = []) {
-  const res = await fetch(apiUrl);
-  if (res.status !== 200) return files;
-  const items = await res.json();
-  for (const item of items) {
-    if (item.type === "file") {
-      files.push(item.path || item.name); // Full path for directory detection
-    } else if (item.type === "dir") {
-      await fetchAllRepoFiles(item.url, files);
-    }
-  }
-  return files;
 }
 
 async function checkRequiredFiles(url, type, assignmentType) {
@@ -75,30 +74,36 @@ async function checkRequiredFiles(url, type, assignmentType) {
 
       let missing = [];
       let found = [];
+
       for (let rule of required) {
-        if (rule.startsWith('.')) {
-          // Extension rule: pass if any file ends with this extension
-          const hasExtAnywhere = filePaths.some(name => name.endsWith(rule));
-          // Also check if extension is present in any MVC directory
-          const hasExtInMVC = filePaths.some(name =>
-            mvcDirs.some(dir =>
-              name.toLowerCase().includes(dir + '/') && name.endsWith(rule)
-            )
-          );
-          if (hasExtAnywhere || hasExtInMVC) found.push(rule);
+        if (assignmentType === "Web Development" && rule === "index.html") {
+          // Accept index.html OR index.php anywhere in the repo
+          const hasEither = filePaths.some(name => {
+            const base = name.split('/').pop().toLowerCase();
+            return base === "index.html" || base === "index.php";
+          });
+          if (hasEither) found.push("index.html/index.php");
+          else missing.push("index.html/index.php");
+        } else if (rule.startsWith('.')) {
+          // Extension: any file anywhere in the repo
+          const hasExt = filePaths.some(name => name.toLowerCase().endsWith(rule));
+          if (hasExt) found.push(rule);
           else missing.push(rule);
         } else {
-          // Exact filename rule: pass if any file matches exactly (anywhere)
-          const hasFile = filePaths.some(name => name.split('/').pop() === rule);
+          // Filename: any file anywhere in the repo
+          const hasFile = filePaths.some(name => name.split('/').pop().toLowerCase() === rule.toLowerCase());
           if (hasFile) found.push(rule);
           else missing.push(rule);
         }
       }
 
+      found = [...new Set(found)];
+      missing = [...new Set(missing)];
+
       return {
         passed: missing.length === 0,
         message: missing.length === 0
-          ? "All required file types/extensions found (including MVC folders)."
+          ? "All required file types/extensions found."
           : `Missing: ${missing.join(', ')}`,
         found: filePaths
       };
@@ -107,12 +112,10 @@ async function checkRequiredFiles(url, type, assignmentType) {
     }
   }
   if (type === 'github-pages') {
-    // For GitHub Pages, we can't list files, so we try to fetch common names for each extension
     let found = [];
     let missing = [];
     for (let rule of required) {
       if (rule.startsWith('.')) {
-        // Try to guess common names for the extension
         const guesses = ['index', 'main', 'script', 'style', 'app', 'notebook', 'data', 'model', 'requirements', 'log', 'design'];
         let extFound = false;
         for (let guess of guesses) {
@@ -125,8 +128,19 @@ async function checkRequiredFiles(url, type, assignmentType) {
           } catch {}
         }
         if (!extFound) missing.push(rule);
+      } else if (assignmentType === "Web Development" && rule === "index.html") {
+        let htmlFound = false;
+        for (let ext of [".html", ".php"]) {
+          const fileUrl = url.replace(/\/$/, '') + '/index' + ext;
+          try {
+            await fetch(fileUrl, { method: 'HEAD', mode: 'no-cors' });
+            found.push("index.html/index.php");
+            htmlFound = true;
+            break;
+          } catch {}
+        }
+        if (!htmlFound) missing.push("index.html/index.php");
       } else {
-        // Try to fetch the exact file
         const fileUrl = url.replace(/\/$/, '') + '/' + rule;
         try {
           await fetch(fileUrl, { method: 'HEAD', mode: 'no-cors' });
@@ -136,6 +150,8 @@ async function checkRequiredFiles(url, type, assignmentType) {
         }
       }
     }
+    found = [...new Set(found)];
+    missing = [...new Set(missing)];
     return {
       passed: missing.length === 0,
       message: missing.length === 0
@@ -160,18 +176,23 @@ function checkStructure(type, assignmentType, foundFiles) {
   if (type === 'github-repo' || type === 'github-pages') {
     let missing = [];
     for (let rule of required) {
-      if (rule.startsWith('.')) {
-        // Extension rule: pass if any file ends with this extension
-        if (!foundFiles.some(name => name.endsWith(rule))) {
+      if (assignmentType === "Web Development" && rule === "index.html") {
+        const hasEither = foundFiles.some(name => {
+          const base = name.split('/').pop().toLowerCase();
+          return base === "index.html" || base === "index.php";
+        });
+        if (!hasEither) missing.push("index.html/index.php");
+      } else if (rule.startsWith('.')) {
+        if (!foundFiles.some(name => name.toLowerCase().endsWith(rule))) {
           missing.push(rule);
         }
       } else {
-        // Exact filename rule
-        if (!foundFiles.includes(rule)) {
+        if (!foundFiles.some(name => name.split('/').pop().toLowerCase() === rule.toLowerCase())) {
           missing.push(rule);
         }
       }
     }
+    missing = [...new Set(missing)];
     return {
       passed: missing.length === 0,
       message: missing.length === 0
