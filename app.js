@@ -1,11 +1,11 @@
 // This file contains the core logic of the application, including functions for checking link accessibility, validating required files based on assignment type, calculating grades, and displaying results.
 
 const defaultRules = {
-  "Web Development": ["index.html", "style.css", "script.js"],
-  "Data Analysis": ["notebook.ipynb", "data.csv"],
-  "Generative AI": ["model.py", "requirements.txt"],
-  "Cybersecurity": ["log.txt", "script.py"],
-  "Graphics/Design": ["design.png", "design.psd"]
+  "Web Development": ["index.html", ".css", ".js"],
+  "Data Analysis": [".ipynb", ".csv"],
+  "Generative AI": [".py", ".txt"],
+  "Cybersecurity": [".txt", ".py"],
+  "Graphics/Design": [".png", ".psd"]
 };
 
 const gradingWeights = {
@@ -57,10 +57,29 @@ async function checkRequiredFiles(url, type, assignmentType) {
       if (res.status !== 200) return { passed: false, message: "Cannot fetch repo contents.", found: [] };
       const files = await res.json();
       const fileNames = files.map(f => f.name);
-      const missing = required.filter(f => !fileNames.includes(f));
+
+      // Only check for extensions (rules starting with '.')
+      let missing = [];
+      let found = [];
+      for (let rule of required) {
+        if (rule.startsWith('.')) {
+          const hasExt = fileNames.some(name => name.endsWith(rule));
+          if (hasExt) found.push(rule);
+          else missing.push(rule);
+        } else {
+          // If rule is a filename, treat as extensionless file
+          const hasFile = fileNames.includes(rule);
+          if (hasFile) found.push(rule);
+          else missing.push(rule);
+        }
+      }
+
+      // If all extensions (and files) are found, pass
       return {
         passed: missing.length === 0,
-        message: missing.length === 0 ? "All required files found." : `Missing: ${missing.join(', ')}`,
+        message: missing.length === 0
+          ? "All required file types/extensions found."
+          : `Missing: ${missing.join(', ')}`,
         found: fileNames
       };
     } catch {
@@ -68,20 +87,40 @@ async function checkRequiredFiles(url, type, assignmentType) {
     }
   }
   if (type === 'github-pages') {
+    // For GitHub Pages, we can't list files, so we try to fetch common names for each extension
     let found = [];
     let missing = [];
-    for (let file of required) {
-      try {
-        const fileUrl = url.replace(/\/$/, '') + '/' + file;
-        await fetch(fileUrl, { method: 'HEAD', mode: 'no-cors' });
-        found.push(file);
-      } catch {
-        missing.push(file);
+    for (let rule of required) {
+      if (rule.startsWith('.')) {
+        // Try to guess common names for the extension
+        const guesses = ['index', 'main', 'script', 'style', 'app', 'notebook', 'data', 'model', 'requirements', 'log', 'design'];
+        let extFound = false;
+        for (let guess of guesses) {
+          const fileUrl = url.replace(/\/$/, '') + '/' + guess + rule;
+          try {
+            await fetch(fileUrl, { method: 'HEAD', mode: 'no-cors' });
+            found.push(rule);
+            extFound = true;
+            break;
+          } catch {}
+        }
+        if (!extFound) missing.push(rule);
+      } else {
+        // Try to fetch the exact file
+        const fileUrl = url.replace(/\/$/, '') + '/' + rule;
+        try {
+          await fetch(fileUrl, { method: 'HEAD', mode: 'no-cors' });
+          found.push(rule);
+        } catch {
+          missing.push(rule);
+        }
       }
     }
     return {
       passed: missing.length === 0,
-      message: missing.length === 0 ? "All required files found." : `Missing: ${missing.join(', ')}`,
+      message: missing.length === 0
+        ? "All required file types/extensions found."
+        : `Missing: ${missing.join(', ')}`,
       found
     };
   }
@@ -99,10 +138,25 @@ async function checkRequiredFiles(url, type, assignmentType) {
 function checkStructure(type, assignmentType, foundFiles) {
   const required = defaultRules[assignmentType] || [];
   if (type === 'github-repo' || type === 'github-pages') {
-    const missing = required.filter(f => !foundFiles.includes(f));
+    let missing = [];
+    for (let rule of required) {
+      if (rule.startsWith('.')) {
+        // Extension rule: pass if any file ends with this extension
+        if (!foundFiles.some(name => name.endsWith(rule))) {
+          missing.push(rule);
+        }
+      } else {
+        // Exact filename rule
+        if (!foundFiles.includes(rule)) {
+          missing.push(rule);
+        }
+      }
+    }
     return {
       passed: missing.length === 0,
-      message: missing.length === 0 ? "Project structure is correct." : `Missing in root: ${missing.join(', ')}`
+      message: missing.length === 0
+        ? "Project structure is correct."
+        : `Missing file type(s): ${missing.join(', ')}`
     };
   }
   return { passed: true, message: "N/A for Google Drive." };
