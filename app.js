@@ -46,6 +46,24 @@ async function checkAccessibility(url, type) {
   }
 }
 
+// Add common MVC directories
+const mvcDirs = ['models', 'views', 'controllers', 'public', 'static', 'routes', 'assets', 'templates', 'src'];
+
+// Recursively fetch all file paths in a GitHub repo using the GitHub API
+async function fetchAllRepoFiles(apiUrl, files = []) {
+  const res = await fetch(apiUrl);
+  if (res.status !== 200) return files;
+  const items = await res.json();
+  for (const item of items) {
+    if (item.type === "file") {
+      files.push(item.path || item.name); // Full path for directory detection
+    } else if (item.type === "dir") {
+      await fetchAllRepoFiles(item.url, files);
+    }
+  }
+  return files;
+}
+
 async function checkRequiredFiles(url, type, assignmentType) {
   const required = defaultRules[assignmentType] || [];
   if (type === 'github-repo') {
@@ -53,34 +71,36 @@ async function checkRequiredFiles(url, type, assignmentType) {
     if (!match) return { passed: false, message: "Invalid GitHub repo URL.", found: [] };
     const apiUrl = `https://api.github.com/repos/${match[1]}/${match[2]}/contents/`;
     try {
-      const res = await fetch(apiUrl);
-      if (res.status !== 200) return { passed: false, message: "Cannot fetch repo contents.", found: [] };
-      const files = await res.json();
-      const fileNames = files.map(f => f.name);
+      const filePaths = await fetchAllRepoFiles(apiUrl);
 
-      // Only check for extensions (rules starting with '.')
       let missing = [];
       let found = [];
       for (let rule of required) {
         if (rule.startsWith('.')) {
-          const hasExt = fileNames.some(name => name.endsWith(rule));
-          if (hasExt) found.push(rule);
+          // Extension rule: pass if any file ends with this extension
+          const hasExtAnywhere = filePaths.some(name => name.endsWith(rule));
+          // Also check if extension is present in any MVC directory
+          const hasExtInMVC = filePaths.some(name =>
+            mvcDirs.some(dir =>
+              name.toLowerCase().includes(dir + '/') && name.endsWith(rule)
+            )
+          );
+          if (hasExtAnywhere || hasExtInMVC) found.push(rule);
           else missing.push(rule);
         } else {
-          // If rule is a filename, treat as extensionless file
-          const hasFile = fileNames.includes(rule);
+          // Exact filename rule: pass if any file matches exactly (anywhere)
+          const hasFile = filePaths.some(name => name.split('/').pop() === rule);
           if (hasFile) found.push(rule);
           else missing.push(rule);
         }
       }
 
-      // If all extensions (and files) are found, pass
       return {
         passed: missing.length === 0,
         message: missing.length === 0
-          ? "All required file types/extensions found."
+          ? "All required file types/extensions found (including MVC folders)."
           : `Missing: ${missing.join(', ')}`,
-        found: fileNames
+        found: filePaths
       };
     } catch {
       return { passed: false, message: "Error checking files.", found: [] };

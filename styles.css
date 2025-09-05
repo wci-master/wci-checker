@@ -59,6 +59,25 @@ input[type="text"]:focus, select:focus {
   outline: none;
 }
 
+input[type="url"] {
+  width: 100%;
+  padding: 0.7rem;
+  margin-top: 0.3rem;
+  border: 1.5px solid #b3c6e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: #f7faff;
+  transition: border 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+  outline: none;
+}
+
+input[type="url"]:focus {
+  border: 1.5px solid #2a5298;
+  box-shadow: 0 0 0 2px #2a529855;
+  background: #fff;
+}
+
 input[type="submit"], button {
   margin-top: 1.5rem;
   width: 100%;
