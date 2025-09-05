@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>WCI Submission Checker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>WCI Submission Checker</h1>
+    <form id="checker-form">
+      <label for="submission-link">Submission Link</label>
+      <input type="url" id="submission-link" required placeholder="Paste submission link here...">
+      <label for="assignment-type">Assignment Type</label>
+      <select id="assignment-type" required>
+        <option value="">Select assignment type</option>
+        <option value="Web Development">Web Development</option>
+        <option value="Data Analysis">Data Analysis</option>
+        <option value="Generative AI">Generative AI</option>
+        <option value="Cybersecurity">Cybersecurity</option>
+        <option value="Graphics/Design">Graphics/Design</option>
+      </select>
+      <button type="submit">Check Submission</button>
+    </form>
+    <div id="result-card" class="hidden"></div>
+    <div id="recent-results"></div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

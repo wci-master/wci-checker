@@ -1,0 +1,189 @@
+body {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  font-family: 'Segoe UI', Arial, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 480px;
+  margin: 40px auto;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(30,60,114,0.18);
+  padding: 2.5rem 2rem 2rem 2rem;
+}
+
+header {
+    background: #35424a;
+    color: #ffffff;
+    padding: 20px 0;
+    text-align: center;
+}
+
+h1 {
+  text-align: center;
+  color: #1e3c72;
+  margin-bottom: 2rem;
+  letter-spacing: 1px;
+}
+
+form {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+form label {
+  display: block;
+  margin-top: 1.2rem;
+  font-weight: 600;
+  color: #2a5298;
+}
+
+input[type="text"],
+select {
+  width: 100%;
+  padding: 0.7rem;
+  margin-top: 0.3rem;
+  border: 1px solid #b3c6e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: #f7faff;
+  transition: border 0.2s;
+}
+
+input[type="text"]:focus, select:focus {
+  border: 1.5px solid #2a5298;
+  outline: none;
+}
+
+input[type="submit"], button {
+  margin-top: 1.5rem;
+  width: 100%;
+  padding: 0.9rem;
+  background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+input[type="submit"]:hover, button:hover {
+  background: linear-gradient(90deg, #2a5298 0%, #1e3c72 100%);
+}
+
+.results {
+    margin-top: 20px;
+    padding: 15px;
+    background: #ffffff;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.result-item {
+    margin: 10px 0;
+    padding: 10px;
+    border-left: 5px solid #35424a;
+    background: #f9f9f9;
+}
+
+#result-card {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border-radius: 14px;
+  background: #f7faff;
+  box-shadow: 0 2px 12px rgba(30,60,114,0.07);
+  font-size: 1rem;
+  animation: fadeIn 0.7s;
+}
+
+#result-card .score {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #1e3c72;
+  margin-bottom: 0.7rem;
+}
+
+#result-card ul {
+  list-style: none;
+  padding: 0;
+}
+
+#result-card li {
+  margin: 0.5rem 0;
+  font-size: 1.05rem;
+}
+
+#result-card .pass { color: #2ecc40; }
+
+#result-card .fail { color: #e74c3c; }
+
+#result-card .meta {
+  color: #888;
+  font-size: 0.97rem;
+  margin-bottom: 0.5rem;
+}
+
+.export-btn {
+  margin-top: 1.2rem;
+  margin-right: 0.7rem;
+  padding: 0.5rem 1.1rem;
+  border: none;
+  border-radius: 6px;
+  background: #2a5298;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.export-btn:hover {
+  background: #1e3c72;
+}
+
+#recent-results {
+  margin-top: 2.5rem;
+}
+
+#recent-results h2 {
+  font-size: 1.1rem;
+  color: #1e3c72;
+  margin-bottom: 0.5rem;
+}
+
+#recent-results ul {
+  list-style: none;
+  padding: 0;
+}
+
+#recent-results li {
+  background: #eaf1fb;
+  margin-bottom: 0.5rem;
+  padding: 0.7rem 1rem;
+  border-radius: 7px;
+  font-size: 0.98rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+#recent-results li:hover {
+  background: #d4e3fa;
+}
+
+.hidden { display: none; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px);}
+  to { opacity: 1; transform: translateY(0);}
+}
+
+@media (max-width: 600px) {
+    .container {
+        width: 95%;
+    }
+}
